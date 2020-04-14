@@ -5,13 +5,14 @@ import os
 import sys
 import argparse
 import logging
+import time
 
 parser = argparse.ArgumentParser(prog="prun.py")
 parser.add_argument("-rl", "--round_list", default="1", help="times list of rounds, for exmaple: \"1 2 4 8 16\"")
 parser.add_argument("-lp", "--log_prefix", default="prun", help="prefix of log file")
 parser.add_argument("-ls", "--log_suffix", default="log", help="suffix of log file")
 parser.add_argument("-t", "--tag", default="%s"%os.getpid(), help="tag of t his experiement")
-parser.add_argument("command", help="command need to run")
+parser.add_argument("command", help="command need to run, command can contain {ROUND} and {NUM} variable.")
 
 args=parser.parse_args()
 
@@ -36,16 +37,39 @@ def run_job(cmd, logfile):
     retval = proc.wait()
     return retval
 
+
+def expand_command(cmd, rnd, num):
+    ecmd = "%s"%cmd
+    while True:
+        new_cmd = ecmd.replace("{ROUND}", "%s", 1)
+        if new_cmd == ecmd:
+            break
+        new_cmd = new_cmd%rnd
+        ecmd = new_cmd
+
+    while True:
+        new_cmd = ecmd.replace("{NUM}", "%s", 1)
+        if new_cmd == ecmd:
+            break
+        new_cmd = new_cmd%num
+        ecmd = new_cmd
+
+    return ecmd
+    
 for r in round_list:
     times_round = int(r)
 
+    start_time = time.time()
+
     logging.info("Start parallel jobs round: %d"%times_round)
     with ThreadPoolExecutor(max_workers=times_round) as executor:
-        log_fn_list = []
+        cmd_log_list = []
         for num in range(times_round):
             log_fn = "%s.%s.r%d.n%d.%s"%(args.tag, args.log_prefix, times_round, num+1, args.log_suffix)
-            log_fn_list.append(log_fn)
-        futures_to_job = {executor.submit(run_job, args.command, log_fn): log_fn for log_fn in log_fn_list}
+            cmd = expand_command(args.command, times_round, num+1)
+            cmd_log_list.append([cmd, log_fn])
+
+        futures_to_job = {executor.submit(run_job, cmd_log[0], cmd_log[1]): cmd_log for cmd_log in cmd_log_list}
         for future in concurrent.futures.as_completed(futures_to_job):
             job = futures_to_job[future]
             try:
@@ -55,4 +79,10 @@ for r in round_list:
                 logging.error("Parallel job failed at round: %d!"%times_round)
                 sys.exit(1)
     logging.info("End round: %d"%times_round)
+
+    end_time = time.time()
+    elp = end_time - start_time
+    print("Elapsed time of this round in seconds: %.2f"%elp)
+    print("-"*48)
+    print("")
 
