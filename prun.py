@@ -14,6 +14,8 @@ parser.add_argument("-ls", "--log_suffix", default="log", help="suffix of log fi
 parser.add_argument("-t", "--tag", default="%s"%os.getpid(), help="tag of t his experiement")
 parser.add_argument("command", help="command need to run, command can contain {ROUND} and {NUM} variable.")
 
+use_mempool = True
+
 args=parser.parse_args()
 
 logging.basicConfig(format="[PRUN %(asctime)s %(levelname)s] %(message)s",
@@ -26,7 +28,8 @@ import subprocess
 
 round_list = args.round_list.split()
 
-def run_job(cmd, logfile):
+def run_job(cl):
+    cmd,logfile = cl[0],cl[1]
     logging.info("Running job: \"%s\", output: %s"%(cmd, logfile))
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
            env=os.environ)
@@ -61,23 +64,31 @@ for r in round_list:
 
     start_time = time.time()
 
-    logging.info("Start parallel jobs round: %d"%times_round)
-    with ThreadPoolExecutor(max_workers=times_round) as executor:
-        cmd_log_list = []
-        for num in range(times_round):
-            log_fn = "%s.%s.r%d.n%d.%s"%(args.tag, args.log_prefix, times_round, num+1, args.log_suffix)
-            cmd = expand_command(args.command, times_round, num+1)
-            cmd_log_list.append([cmd, log_fn])
+    cmd_log_list = []
+    for num in range(times_round):
+        log_fn = "%s.%s.r%d.n%d.%s"%(args.tag, args.log_prefix, times_round, num+1, args.log_suffix)
+        cmd = expand_command(args.command, times_round, num+1)
+        cmd_log_list.append([cmd, log_fn])
 
-        futures_to_job = {executor.submit(run_job, cmd_log[0], cmd_log[1]): cmd_log for cmd_log in cmd_log_list}
-        for future in concurrent.futures.as_completed(futures_to_job):
-            job = futures_to_job[future]
-            try:
-                data = future.result()
-            except Exception as exc:
-                print(exc)
-                logging.error("Parallel job failed at round: %d!"%times_round)
-                sys.exit(1)
+    logging.info("Start parallel jobs round: %d"%times_round)
+    if not use_mempool:
+        with ThreadPoolExecutor(max_workers=times_round) as executor:
+            futures_to_job = {executor.submit(run_job, [cmd_log[0], cmd_log[1]]): cmd_log for cmd_log in cmd_log_list}
+            for future in concurrent.futures.as_completed(futures_to_job):
+                job = futures_to_job[future]
+                try:
+                    data = future.result()
+                except Exception as exc:
+                    print(exc)
+                    logging.error("Parallel job failed at round: %d!"%times_round)
+                    sys.exit(1)
+    else:
+        from multiprocessing.dummy import Pool as ThreadPool
+        pool = ThreadPool(times_round)
+        results = pool.map(run_job, cmd_log_list)
+        pool.close()
+        pool.join()
+
     logging.info("End round: %d"%times_round)
 
     end_time = time.time()
