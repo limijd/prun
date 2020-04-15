@@ -72,4 +72,6 @@ keys = list(results.keys())
 keys.sort()
 
 for k in keys:
+    rnd, r_total, r_avg, r_max, r_min, num_kept, num_skipped = results[k]
+    assert(rnd==k)
     print("[Round: %4d] Total CPU: %.2f, Avg: %.2f, Min: %.2f, Max: %.2f, Kept: %d, Skipped: %d"%(k, r_total, r_avg, r_max, r_min, len(num_kept), len(num_skipped)))
