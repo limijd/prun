@@ -49,8 +49,8 @@ results={}
 for rnd, rdata in rounds.items():
     r_total = 0
     r_avg = 0
-    r_max = 0
-    r_min = 0x7fffffff
+    r_min= 0
+    r_max = 0x7fffffff
     num_kept = []
     num_skipped = []
     for num, perfdata in rdata.items():
