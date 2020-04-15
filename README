@@ -1,5 +1,7 @@
-readme
+prun.py
 
-checkout locally
+  run job for N rounds and each round for different times. 
 
-test
+list_stat.py
+
+  print the statistics of a numeric list
