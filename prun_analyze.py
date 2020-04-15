@@ -56,7 +56,7 @@ for rnd, rdata in rounds.items():
     for num, perfdata in rdata.items():
         t = perfdata[1] + perfdata[2]
         r_total = r_total + t
-        if num<args.low_boundary:
+        if t<args.low_boundary:
             num_skipped.append(num)
             continue
         else:
