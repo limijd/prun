@@ -49,8 +49,8 @@ results={}
 for rnd, rdata in rounds.items():
     r_total = 0
     r_avg = 0
-    r_min= 0
-    r_max = 0x7fffffff
+    r_max = 0
+    r_min = 0x7fffffff
     num_kept = []
     num_skipped = []
     for num, perfdata in rdata.items():
@@ -74,4 +74,4 @@ keys.sort()
 for k in keys:
     rnd, r_total, r_avg, r_max, r_min, num_kept, num_skipped = results[k]
     assert(rnd==k)
-    print("[Round: %4d] Total CPU: %.2f, Avg: %.2f, Min: %.2f, Max: %.2f, Kept: %d, Skipped: %d"%(k, r_total, r_avg, r_max, r_min, len(num_kept), len(num_skipped)))
+    print("[Round: %4d] Total CPU: %.2f, Avg: %.2f, Min: %.2f, Max: %.2f, Kept: %d, Skipped: %d"%(k, r_total, r_avg, r_min, r_max, len(num_kept), len(num_skipped)))
